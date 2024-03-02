@@ -21,7 +21,7 @@
   </p>
 </p>
 
-![Downloads](https://img.shields.io/github/downloads/99Anvar99/Aera/total) ![Contributors](https://img.shields.io/github/contributors/99Anvar99/Aera?color=dark-green) ![Forks](https://img.shields.io/github/forks/99Anvar99/Aera?style=social) ![Stargazers](https://img.shields.io/github/stars/99Anvar99/Aera?style=social) ![Issues](https://img.shields.io/github/issues/99Anvar99/Aera) ![License](https://img.shields.io/github/license/99Anvar99/Aera) 
+![Contributors](https://img.shields.io/github/contributors/99Anvar99/Aera?color=dark-green) ![Forks](https://img.shields.io/github/forks/99Anvar99/Aera?style=social) ![Stargazers](https://img.shields.io/github/stars/99Anvar99/Aera?style=social) ![Issues](https://img.shields.io/github/issues/99Anvar99/Aera) ![License](https://img.shields.io/github/license/99Anvar99/Aera) 
 
 ## Works as of (1.68 | 3095)
 
@@ -52,6 +52,10 @@ This framework was developed with educational intent, providing users with a fre
 - Simply Build in (Release)
 - Inject the DLL into the game
 - Open Key: INSERT
+
+If you have folder created in appdata/Aera/Headers
+- (You can add custom images to appdata/Aera/Headers)
+You can change that in the code to any desired location
 
 ## Contributing
 
