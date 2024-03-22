@@ -1,20 +1,11 @@
 <br/>
 <p align="center">
-  <a href="https://github.com/99Anvar99/Aera">
-    <img src="https://media.discordapp.net/attachments/1161753809719152824/1202703795386322945/Aera.png?ex=65ce6c31&is=65bbf731&hm=b482fdfc55a9f74ca89e3ae2b9cdee62cd0ee7650af75c24d0294aa5911ea444&=&format=webp&quality=lossless" alt="Logo" width="80" height="80">
-  </a>
-
   <h3 align="center">Aera</h3>
 
   <p align="center">
     A ImGui mod menu base designed for Grand Theft Auto V. intended exclusively for educational use.
     <br/>
     <br/>
-    <a href="https://github.com/99Anvar99/Aera"><strong>Explore the docs »</strong></a>
-    <br/>
-    <br/>
-    <a href="https://github.com/99Anvar99/Aera">View Demo</a>
-    .
     <a href="https://github.com/99Anvar99/Aera/issues">Report Bug</a>
     .
     <a href="https://github.com/99Anvar99/Aera/issues">Request Feature</a>
@@ -80,3 +71,8 @@ Distributed under the MIT License.
 ## Credits
 - Vali
 - Yim Menu (thread pool, natives structure, some more utilities)
+
+## !["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)
+- Paypal: @mister9982
+- BitCoin: 32cYfrR7hHL6vKrtPniKuRhQTPmRS23Shy
+- LiteCoin: MKLfBvdqiqkc1SakESapMfVcji3BTMBcja

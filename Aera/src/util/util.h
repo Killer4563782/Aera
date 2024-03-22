@@ -307,48 +307,89 @@ namespace util
 
 	namespace natives
 	{
-		inline void requestModel(u32 hash)
+		inline bool request_model(const u32& hash, high_resolution_clock::duration timeout = 3s)
 		{
-			for (i8 i{25i8}; !STREAMING::HAS_MODEL_LOADED(hash) && i; --i)
+			if (!STREAMING::IS_MODEL_VALID(hash) || !STREAMING::IS_MODEL_IN_CDIMAGE(hash))
+				return false;
+
+			const auto end = high_resolution_clock::now() + timeout;
+			while (high_resolution_clock::now() < end)
 			{
+				if (STREAMING::HAS_MODEL_LOADED(hash))
+					return true;
+
 				STREAMING::REQUEST_MODEL(hash);
-				fiber::current()->sleep();
+
+				fiber::current()->sleep(100ms);
 			}
+
+			return false;
 		}
 
-		inline bool requestControl(Entity ent, i32 tries = 30, bool wait = true)
+		inline bool network_has_control_of_entity(const rage::netObject* net_object)
 		{
-			if (NETWORK::NETWORK_HAS_CONTROL_OF_ENTITY(ent))
+			return !net_object || !net_object->m_next_owner_id && net_object->m_control_id == -1;
+		}
+
+		inline bool request_control(const Entity ent, const int timeout = 300)
+		{
+			if (!*pointers::g_isSessionActive)
 				return true;
-			for (i32 i{}; !NETWORK::NETWORK_HAS_CONTROL_OF_ENTITY(ent) && !
-			     NETWORK::NETWORK_REQUEST_CONTROL_OF_NETWORK_ID(ent) && i != tries; ++i)
-			{
-				NETWORK::NETWORK_REQUEST_CONTROL_OF_ENTITY(ent);
-				NETWORK::NETWORK_HAS_CONTROL_OF_NETWORK_ID(ent);
-				if (wait)
-					fiber::current()->sleep(100ms);
-			}
-			if (!NETWORK::NETWORK_HAS_CONTROL_OF_ENTITY(ent))
-			{
+
+			const auto hnd = pointers::g_handleToPointer(ent);
+			if (!hnd || !hnd->m_net_object || !*pointers::g_isSessionActive)
 				return false;
+
+			if (network_has_control_of_entity(hnd->m_net_object))
+				return true;
+
+			for (int i = 0; i < timeout; i++)
+			{
+				pointers::g_requestControl(hnd->m_net_object);
+				if (network_has_control_of_entity(hnd->m_net_object))
+					return true;
+
+				if (timeout != 0)
+					fiber::current()->sleep();
 			}
-			NETWORK::SET_NETWORK_ID_CAN_MIGRATE(NETWORK::NETWORK_GET_NETWORK_ID_FROM_ENTITY(ent), TRUE);
-			return true;
+			return false;
 		}
 
 		inline bool forcefullyTakeControl(Entity ent)
 		{
-			if (NETWORK::NETWORK_IS_SESSION_ACTIVE())
+			if (*pointers::g_isSessionActive)
 			{
-				CNetworkPlayerMgr* playerMgr{*pointers::g_networkPlayerMgr};
-				rage::CDynamicEntity* entity{classes::getEntityFromSGUID(ent)};
-				requestControl(ent, 1, false);
-				rage::netObject* netObj{entity->m_net_object};
-				network::getObjectMgr()->ChangeOwner(netObj, playerMgr->m_local_net_player, 0); //Yoink
+				const CNetworkPlayerMgr* player_mgr{ *pointers::g_networkPlayerMgr };
+				const rage::CDynamicEntity* entity{classes::getEntityFromSGUID(ent) };
+				request_control(ent, 0);
+				rage::netObject* net_obj{ entity->m_net_object };
+				const auto obj_mgr = *pointers::g_networkObjectMgr;
+				obj_mgr->ChangeOwner(net_obj, player_mgr->m_local_net_player, 0); //Yoink
 				return true;
 			}
-			return requestControl(ent, 30, false);
 			return false;
+		}
+
+		inline void delete_selected_entity(Entity& ent, bool force)
+		{
+			if (!ENTITY::DOES_ENTITY_EXIST(ent))
+			{
+				return;
+			}
+
+			if (!force && !request_control(ent))
+			{
+				return;
+			}
+
+			ENTITY::SET_ENTITY_COORDS_NO_OFFSET(ent, 7000.f, 7000.f, 15.f, FALSE, FALSE, FALSE);
+
+			if (!ENTITY::IS_ENTITY_A_MISSION_ENTITY(ent))
+			{
+				ENTITY::SET_ENTITY_AS_MISSION_ENTITY(ent, TRUE, TRUE);
+			}
+
+			ENTITY::DELETE_ENTITY(&ent);
 		}
 	}
 
@@ -396,12 +437,12 @@ namespace util
 		}
 	}
 
-	inline void async(std::function<void()> callback)
+	inline void async(const std::function<void()>& callback)
 	{
 		std::thread(callback).detach();
 	}
 
-	inline void delayedThread(bool& running, milliseconds ms, std::function<void()> callback)
+	inline void delayedThread(bool& running, milliseconds ms, const std::function<void()>& callback)
 	{
 		async([&]
 		{
@@ -416,6 +457,8 @@ namespace util
 
 	inline bool inModuleRegion(cc* module, u64 address)
 	{
+		if(!address)
+			return false;
 		static HMODULE hmod{GetModuleHandleA(module ? module : nullptr)};
 		static u64 moduleBase{};
 		static u64 moduleSize{};
@@ -424,12 +467,13 @@ namespace util
 			MODULEINFO info{};
 			if (!K32GetModuleInformation(GetCurrentProcess(), hmod, &info, sizeof(info)))
 			{
+				LOG(Fatal, "GetModuleInformation failed!");
 				return true;
 			}
-			moduleBase = (u64)hmod;
+			moduleBase = reinterpret_cast<u64>(hmod);
 			moduleSize = static_cast<u64>(info.SizeOfImage);
 		}
-		return address > moduleBase && address < (moduleBase + moduleSize);
+		return address > moduleBase && address < moduleBase + moduleSize;
 	}
 
 	inline bool checkIns(cc* module, u64 address, u8 ins)
@@ -438,7 +482,7 @@ namespace util
 		{
 			return false;
 		}
-		return *(u8*)address == ins;
+		return *reinterpret_cast<u8*>(address) == ins;
 	}
 
 	inline bool pressed(i8 key)
@@ -453,7 +497,7 @@ namespace util
 		return false;
 	}
 
-	inline bool onPress(i8 key, std::function<void()> cb = {})
+	inline bool onPress(i8 key, const std::function<void()>& cb = {})
 	{
 		if (pressed(key))
 		{
@@ -513,6 +557,7 @@ namespace util
 				inf = static_cast<t*>(classes::getPickupInterface());
 			}
 			break;
+		default: ;
 		}
 		for (int32_t i{}; i != inf->m_count; ++i)
 		{
@@ -522,7 +567,7 @@ namespace util
 		}
 		for (int32_t i{}; i != objects.size(); ++i)
 		{
-			arr[i] = classes::getSGUIDFromEntity((rage::CEntity*)objects[i]);
+			arr[i] = classes::getSGUIDFromEntity(reinterpret_cast<rage::CEntity*>(objects[i]));
 		}
 		return objects.size();
 	}
@@ -611,12 +656,12 @@ namespace util
 	}
 
 	//Not compile time but I'm fucking sick of issues so I'm using what works
-	inline std::vector<const char*> g_badEndpoints{
+	inline std::vector g_badEndpoints{
 		"SubmitCompressed",
 		"SubmitRealTime"
 	};
 
-	inline bool badEndpoint(std::string endpoint)
+	inline bool badEndpoint(const std::string& endpoint)
 	{
 		for (auto& e : g_badEndpoints)
 		{
